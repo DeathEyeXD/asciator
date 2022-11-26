@@ -1,12 +1,11 @@
 use std::error::Error;
 
-// use colored::*;
 use image::GenericImageView;
 
 fn main() {
     let args = std::env::args().collect::<Vec<String>>();
     if args.len() < 2 {
-        eprintln!("Usage: asciator <image> <invert>(optional)");
+        eprintln!("Usage: asciator <image> <1 if you want to invert>(optional)");
         return;
     }
     let path = &args[1];
@@ -31,9 +30,9 @@ fn run(path: &str, invert: bool) -> Result<(), Box<dyn Error>> {
 
     Ok(())
 }
-// const CHAR_MATRIX: &str = " `.,^\":;Il!i~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
+// const GRAYSCALE_CHARS: &str = " `.,^\":;Il!i~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
 const GRAYSCALE_CHARS: &str = " .,;!vlLFE$";
-// const CHAR_MATRIX: &str = r#"@MBHENR#KWXDFPQASUZbdehx*8Gm&04LOVYkpq5Tagns69owz$CIu23Jcfry%1v7l+it[] {}?j|()=~!-/<>\"^_';,:`. "#;
+// const GRAYSCALE_CHARS: &str = r#"@MBHENR#KWXDFPQASUZbdehx*8Gm&04LOVYkpq5Tagns69owz$CIu23Jcfry%1v7l+it[] {}?j|()=~!-/<>\"^_';,:`. "#;
 
 fn convert_pixel(brightness: u8) -> char {
     let len = GRAYSCALE_CHARS.len();
@@ -44,7 +43,7 @@ fn convert_pixel(brightness: u8) -> char {
 
 fn scale_down(img: &mut image::DynamicImage) {
     let (width, height) = img.dimensions();
-    let scale = 100.0 / width as f64;
+    let scale = 80.0 / width as f64;
     let new_width = (width as f64 * scale).round();
     let new_height = (height as f64 * scale).round();
 
