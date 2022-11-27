@@ -5,7 +5,38 @@ Super easy to use. Results are the best when image is on dark/transparent backgr
 
 ## usage:
 ```
-Usage: asciator <image> <1 if you want to invert>(optional)
+Usage: asciator [OPTIONS] <PATH>
+
+Arguments:
+  <PATH>  Path to the image
+
+Options:
+      --scale-px <SCALE_PX>
+          Scale the image to this width. Cannot be used with scale [default: 100]
+      --scale <SCALE>
+          Scale the image by this factor. Cannot be used with scale-px
+  -c, --colorize
+          Print the resulted ASCII art in color. Note: this will only work if the terminal supports ANSI colors
+  -b, --brightness-threshold <BRIGHTNESS_THRESHOLD>
+          Controls how bright pixels have to be to be converted to ascii. Lower values mean even dark pixels will be converted to ascii [default: 1]
+  -h, --help
+          Print help information
+  -V, --version
+          Print version information
+```
+
+## Installing
+
+locally (after cloning the repository):
+
+```
+cargo install --path .
+```
+
+remotely:
+
+```
+cargo install --git https://github.com/DeathEyeXD/asciator
 ```
 
 ## example:
