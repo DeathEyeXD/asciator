@@ -1,4 +1,3 @@
-use colored::*;
 use image::{GenericImageView, Pixel};
 use std::error::Error;
 use std::io::{self, Write};
@@ -9,7 +8,7 @@ fn main() {
     match run() {
         Ok(_) => (),
         Err(e) => {
-            eprintln!("{}", e);
+            eprintln!("error: {}", e);
             std::process::exit(1);
         }
     }
@@ -44,7 +43,7 @@ struct CliArgs {
     #[arg(long, short)]
     colorize: bool,
 
-    /// Controls how bright pixels have to be to be converted to ascii
+    /// Controls how bright pixels have to be to be converted to ascii.
     /// Lower values mean even dark pixels will be converted to ascii
     #[arg(short, long, default_value = "1")]
     brightness_threshold: usize,
@@ -60,6 +59,7 @@ struct Asciator {
 
 impl Asciator {
     const DEFAULT_DENSITY_MAP: [char; 10] = ['.', ',', ';', '!', 'v', 'l', 'L', 'F', 'E', '$'];
+    const ANTI_SQUASHING_WIDTH_FACTOR: f64 = 1.25;
     fn from_args(args: CliArgs) -> Result<Self, Box<dyn Error>> {
         let mut density_map = vec![' '; args.brightness_threshold];
         density_map.extend(Self::DEFAULT_DENSITY_MAP);
@@ -82,20 +82,23 @@ impl Asciator {
         let (width, height) = self.image.dimensions();
         let (new_width, new_height) = match self.scale {
             Some(scale) => {
-                let new_width = (width as f64 * scale) as u32;
+                let new_width = (width as f64 * scale * Self::ANTI_SQUASHING_WIDTH_FACTOR) as u32;
                 let new_height = (height as f64 * scale) as u32;
                 (new_width, new_height)
             }
             None => {
                 let scale = self.scale_px as f64 / width as f64;
                 let new_height = (height as f64 * scale) as u32;
-                (self.scale_px, new_height)
+                (
+                    (Self::ANTI_SQUASHING_WIDTH_FACTOR * self.scale_px as f64) as u32,
+                    new_height,
+                )
             }
         };
 
-        self.image = self
-            .image
-            .resize(new_width, new_height, image::imageops::FilterType::Nearest)
+        self.image =
+            self.image
+                .resize_exact(new_width, new_height, image::imageops::FilterType::Triangle)
     }
 
     fn convert_pixel(&self, brightness: u8) -> char {
@@ -113,19 +116,12 @@ impl Asciator {
             let brightness = rgb.to_luma().0[0];
             let c = self.convert_pixel(brightness);
             if c != ' ' && self.colorize {
-                // let color = format!("\x1b[38;2;{};{};{}m", rgb[0], rgb[1], rgb[2]);
                 write!(
                     stdout,
                     "\x1b[38;2;{};{};{}m{}{}",
                     rgb[0], rgb[1], rgb[2], c, c
                 )
                 .unwrap();
-                // write!(
-                //     stdout,
-                //     "{}",
-                //     format!("{}{}", c, c).truecolor(rgb[0] as u8, rgb[1] as u8, rgb[2] as u8)
-                // )
-                // .unwrap();
             } else {
                 write!(stdout, "{}{}", c, c).unwrap();
             }
@@ -134,10 +130,3 @@ impl Asciator {
         writeln!(stdout).unwrap();
     }
 }
-// const GRAYSCALE_CHARS: &str = " `.,^\":;Il!i~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
-// const GRAYSCALE_CHARS: &str = "  .,;!vlLFE$";
-// const DENSITY_CHARS: [char; 13] = [
-//     ' ', ' ', ' ', '.', ',', ';', '!', 'v', 'l', 'L', 'F', 'E', '$',
-// ];
-// // const DENSITY_CHARS: [char; 8] = [' ', ' ', '.', ':', '░', '▒', '▓', '█'];
-// // const GRAYSCALE_CHARS: &str = r#"@MBHENR#KWXDFPQASUZbdehx*8Gm&04LOVYkpq5Tagns69owz$CIu23Jcfry%1v7l+it[] {}?j|()=~!-/<>\"^_';,:`. "#;
