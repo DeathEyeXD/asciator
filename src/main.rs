@@ -1,6 +1,7 @@
+use colored::*;
+use image::{GenericImageView, Pixel};
 use std::error::Error;
-
-use image::GenericImageView;
+use std::io::{self, Write};
 
 fn main() {
     let args = std::env::args().collect::<Vec<String>>();
@@ -18,32 +19,38 @@ fn main() {
 
 fn run(path: &str, invert: bool) -> Result<(), Box<dyn Error>> {
     let mut img = image::open(path)?;
-    scale_down(&mut img);
+    // scale_down(&mut img);
     if invert {
         img.invert();
     }
-    let rows = map_image(img);
-    for row in rows {
-        // println!("{}", row.truecolor(14, 181, 59));
-        println!("{}", row);
-    }
+    // let rows = map_image(img);
+    // for row in rows {
+    //     // println!("{}", row.truecolor(14, 181, 59));
+    //     println!("{}", row);
+    // }
+    //
+    map_image(img);
 
     Ok(())
 }
 // const GRAYSCALE_CHARS: &str = " `.,^\":;Il!i~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
-const GRAYSCALE_CHARS: &str = " .,;!vlLFE$";
+// const GRAYSCALE_CHARS: &str = "  .,;!vlLFE$";
+const DENSITY_CHARS: [char; 13] = [
+    ' ', ' ', ' ', '.', ',', ';', '!', 'v', 'l', 'L', 'F', 'E', '$',
+];
+// const DENSITY_CHARS: [char; 8] = [' ', ' ', '.', ':', '░', '▒', '▓', '█'];
 // const GRAYSCALE_CHARS: &str = r#"@MBHENR#KWXDFPQASUZbdehx*8Gm&04LOVYkpq5Tagns69owz$CIu23Jcfry%1v7l+it[] {}?j|()=~!-/<>\"^_';,:`. "#;
 
 fn convert_pixel(brightness: u8) -> char {
-    let len = GRAYSCALE_CHARS.len();
+    let len = DENSITY_CHARS.len();
 
     let index = (brightness as f64 / 255.0 * (len - 1) as f64).round() as usize;
-    return GRAYSCALE_CHARS.chars().nth(index).unwrap();
+    DENSITY_CHARS[index]
 }
 
 fn scale_down(img: &mut image::DynamicImage) {
     let (width, height) = img.dimensions();
-    let scale = 80.0 / width as f64;
+    let scale = 120.0 / height as f64;
     let new_width = (width as f64 * scale).round();
     let new_height = (height as f64 * scale).round();
 
@@ -54,12 +61,29 @@ fn scale_down(img: &mut image::DynamicImage) {
     )
 }
 
-fn map_image(img: image::DynamicImage) -> Vec<String> {
-    let mut rows = vec!["".to_string(); img.height() as usize];
-    for (_, y, brightness) in img.into_luma8().enumerate_pixels() {
-        rows[y as usize].push(convert_pixel(brightness[0]));
-        rows[y as usize].push(convert_pixel(brightness[0]));
+fn map_image(img: image::DynamicImage) {
+    let stdout = std::io::stdout();
+    let mut handle = stdout.lock();
+    for (x, _, rgb) in img.into_rgb8().enumerate_pixels() {
+        let brightness = rgb.to_luma()[0];
+        if x == 0 {
+            handle.write_all(b"\n").unwrap();
+        }
+        let char = convert_pixel(brightness);
+        // print!("{}{}", char, char);
+        // if char == ' ' {
+        //     handle
+        //         .write_all("@@".on_truecolor(rgb[0], rgb[1], rgb[2]).as_bytes())
+        //         .unwrap();
+        // } else {
+        handle
+            .write_all(
+                format!("{}{}", char, char)
+                    .truecolor(rgb[0], rgb[1], rgb[2])
+                    .to_string()
+                    .as_bytes(),
+            )
+            .unwrap();
+        // }
     }
-
-    rows
 }
