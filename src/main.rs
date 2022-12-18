@@ -43,9 +43,13 @@ struct CliArgs {
     #[arg(long, short)]
     colorize: bool,
 
+    /// Print ASCII art on a black background
+    #[arg(long, short, default_value = "false")]
+    black_bg: bool,
+
     /// Controls how bright pixels have to be to be converted to ascii.
     /// Lower values mean even dark pixels will be converted to ascii
-    #[arg(short, long, default_value = "1")]
+    #[arg(short = 't', long, default_value = "1")]
     brightness_threshold: usize,
 }
 
@@ -55,10 +59,17 @@ struct Asciator {
     colorize: bool,
     density_map: Vec<char>,
     image: image::DynamicImage,
+    black_bg: bool,
 }
 
 impl Asciator {
-    const DEFAULT_DENSITY_MAP: [char; 10] = ['.', ',', ';', '!', 'v', 'l', 'L', 'F', 'E', '$'];
+    // const DEFAULT_DENSITY_MAP: [char; 10] = ['.', ',', ';', '!', 'v', 'l', 'L', 'F', 'E', '$'];
+    // const DEFAULT_DENSITY_MAP: [char; 14] = [
+    //     '.', ',', ':', 'i', 'l', 'I', 'F', 'E', 'S', 'G', '8', 'M', 'W', '@',
+    // const DEFAULT_DENSITY_MAP: [char; 9] = ['.', ':', 'i', '=', '+', '*', '#', '@', 'W'];
+    const DEFAULT_DENSITY_MAP: [char; 11] = ['.', ',', ';', 'i', 'v', 'l', 'h', 'I', 'S', '@', 'W'];
+
+    // const DEFAULT_DENSITY_MAP: [char; 8] = ['.', ',', ';', 'i', 'l', 'I', 'S', 'W'];
     const ANTI_SQUASHING_WIDTH_FACTOR: f64 = 1.25;
     fn from_args(args: CliArgs) -> Result<Self, Box<dyn Error>> {
         let mut density_map = vec![' '; args.brightness_threshold];
@@ -68,6 +79,7 @@ impl Asciator {
             scale_px: args.scale_px,
             scale: args.scale,
             colorize: args.colorize,
+            black_bg: args.black_bg,
             image: image::open(&args.path)?,
             density_map,
         })
@@ -109,16 +121,27 @@ impl Asciator {
     fn print_ascii_art(self) {
         let mut stdout = io::stdout().lock();
 
+        if self.black_bg && !self.colorize {
+            write!(stdout, "\x1b[48;2;0;0;0m").unwrap();
+        }
+
         for (x, _, rgb) in self.image.pixels() {
             if x == 0 {
                 writeln!(stdout).unwrap();
             }
             let brightness = rgb.to_luma().0[0];
             let c = self.convert_pixel(brightness);
-            if c != ' ' && self.colorize {
+            if self.black_bg && self.colorize {
                 write!(
                     stdout,
-                    "\x1b[38;2;{};{};{}m{}{}",
+                    "\x1b[48;2;0;0;0;38;2;{};{};{}m{}{}\x1b[0m",
+                    rgb[0], rgb[1], rgb[2], c, c
+                )
+                .unwrap();
+            } else if self.colorize {
+                write!(
+                    stdout,
+                    "\x1b[38;2;{};{};{}m{}{}\x1b[0m",
                     rgb[0], rgb[1], rgb[2], c, c
                 )
                 .unwrap();
@@ -127,6 +150,9 @@ impl Asciator {
             }
         }
 
+        if self.black_bg {
+            write!(stdout, "\x1b[0m").unwrap();
+        }
         writeln!(stdout).unwrap();
     }
 }
